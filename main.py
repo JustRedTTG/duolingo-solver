@@ -5,14 +5,12 @@ import pickle
 import random
 import time
 import tkinter as tk
-from traceback import print_exc
 
 import pyautogui
 from selenium import webdriver
 from selenium.common import NoSuchElementException, TimeoutException, StaleElementReferenceException, \
     ElementClickInterceptedException
 from selenium.webdriver import ActionChains
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -544,7 +542,6 @@ if __name__ == "__main__":
             try:
                 temp_info = duolingo.get_challenge_info()
             except:
-                print_exc()
                 break
             print(temp_info)
 
