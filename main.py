@@ -426,12 +426,14 @@ class Duolingo:
             info['_options'][index].click()
         elif info["type"] == "challenge-translate":
             text = answer.answer
+            used = []
             while text:
                 for i, part in enumerate(info["parts"]):
-                    if text.startswith(part):
+                    if i not in used and text.startswith(part):
                         text = text[len(part):].strip()
                         info["_parts"][i].click()
                         time.sleep(.2)
+                        used.append(i)
                         break
                 else:
                     return 0
