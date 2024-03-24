@@ -428,7 +428,7 @@ class Duolingo:
             text = answer.answer
             used = []
             while text:
-                for i, part in enumerate(info["parts"]):
+                for i, part in sorted(enumerate(info["parts"]), key=lambda x: len(x[1]), reverse=True):
                     if i not in used and text.startswith(part):
                         text = text[len(part):].strip()
                         info["_parts"][i].click()
