@@ -166,9 +166,13 @@ class Duolingo:
         self.status.status = f"Redirecting..."
         self.driver.get(url)
 
-        assert "Duolingo" in self.driver.title
+        while "Duolingo" not in self.driver.title:
+            pass
 
-        self.driver.fullscreen_window()
+        try:
+            self.driver.fullscreen_window()
+        except:
+            pass
 
 
     def accept_cookies(self):
