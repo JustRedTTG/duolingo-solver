@@ -2,11 +2,15 @@ import atexit
 import json
 import os
 import pickle
+import random
 import time
 import tkinter as tk
+from traceback import print_exc
+
 import pyautogui
 from selenium import webdriver
-from selenium.common import NoSuchElementException, TimeoutException, StaleElementReferenceException
+from selenium.common import NoSuchElementException, TimeoutException, StaleElementReferenceException, \
+    ElementClickInterceptedException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -21,7 +25,7 @@ DORMANT = "white"
 COOKIES_PATH = 'cookies.pkl'
 
 NEED_ANSWER_COLOR = 'rgb(250, 129, 49)'
-OKAY_ANSWER_COLOR = 'rgb(17, 255, 120)'
+OKAY_ANSWER_COLOR = 'rgba(121, 185, 51, 0.9)'
 
 
 def wrap_in_challenge_color(color):
@@ -42,10 +46,11 @@ class Status:
     _HEIGHT = 55
     _CLICK_STATUS = " (Click ME to continue)"
 
-    def __init__(self):
+    def __init__(self, additional_status_proccessing=None):
         self._status = ""
         self._color = ""
         self._clicked = False
+        self._additional_status_proccessing = additional_status_proccessing
 
         self._root = tk.Tk()
         self._root.withdraw()
@@ -81,6 +86,9 @@ class Status:
     @status.setter
     def status(self, value):
         self._status = value
+        if self._additional_status_proccessing is not None:
+            self._status = self._additional_status_proccessing(self._status)
+
         self._status_label.config(text=self._status)
         self._status_window.update()
 
@@ -90,7 +98,11 @@ class Status:
         self._status_window.config(bg=self._color)
         self._status_window.update()
 
-    def wait_to_be_clicked(self, refocus=None):
+    @staticmethod
+    def _focus():
+        pyautogui.hotkey('alt', 'tab')
+
+    def wait_to_be_clicked(self, after=None):
         self._clicked = False
         old_color = self.color
         self.color = AWAIT_CLICK
@@ -102,9 +114,9 @@ class Status:
         self.color = old_color
         self.status = self.status[:-len(self._CLICK_STATUS)]
         self._clicked = False
-        if refocus is not None:
-            time.sleep(.2)
-            refocus()
+        self._focus()
+        if after is not None:
+            after()
 
     def _exit(self):
         self._root.destroy()
@@ -112,13 +124,19 @@ class Status:
 
 class Duolingo:
     def __init__(self):
-        self.status = Status()
+        self._hearts = -1
+        self.status = Status(self.additional_status_proccessing)
 
         self.status.status = "Launching Browser..."
 
         self.driver = webdriver.Chrome()
 
         atexit.register(self.driver.close)
+
+    def additional_status_proccessing(self, status: str):
+        if status.startswith("❤"):
+            status = status.split(" ", 1)[1]
+        return f"❤{self.heart_count} {status}"
 
     def open(self):
         self.status.status = "Opening Duolingo"
@@ -154,9 +172,6 @@ class Duolingo:
 
         self.driver.fullscreen_window()
 
-    @staticmethod
-    def focus():
-        pyautogui.hotkey('alt', 'tab')
 
     def accept_cookies(self):
         try:
@@ -179,6 +194,20 @@ class Duolingo:
             return challenge_header.find_element(By.XPATH, '../../..')
         except (NoSuchElementException, StaleElementReferenceException):
             return None
+
+    def _get_hearts_from_page(self):
+        try:
+            return int(self.driver.find_element(by=By.CSS_SELECTOR, value='[src*="hearts"]')
+                .find_element(by=By.XPATH, value='./following-sibling::span').text)
+        except:
+            return None
+
+    @property
+    def heart_count(self):
+        if (hearts := self._get_hearts_from_page()) is not None:
+            self._hearts = hearts
+            return hearts
+        return self._hearts
 
     @property
     def challenge_type(self):
@@ -219,7 +248,7 @@ class Duolingo:
 
     @property
     def in_practice(self):
-        return self._get_challenge_container() is not None
+        return self._get_challenge_container() is not None and not (self._get_hearts_from_page() == 0)
 
     def _get_child(self, element, index):
         return element.find_element(By.XPATH, f'./child::*[{index + 1}]')
@@ -305,11 +334,21 @@ class Duolingo:
         return False
 
     def start_practice(self):
+        attempt = 0
         while not self.in_practice:
-            if not self._start_practice():
-                self.status.status = "Confirming practice..."
-                self.status.color = WAITING
-                time.sleep(6)
+            attempt += 1
+            if attempt > 3 or self.heart_count >= 5:
+                self.status.status = "Couldn't start practice, doing a lesson instead..."
+                time.sleep(.1)
+                self.status.color = DORMANT
+                self.redirect("https://www.duolingo.com/lesson/unit/1/level/1")
+
+            if attempt > 4 or self.heart_count >= 5 or not self._start_practice():
+                for i in range(60):
+                    self.status.status = f"Confirming practice... [{attempt}] ({i*.1:.1f}/6)"
+                    self.status.color = WAITING
+                    time.sleep(.1)
+
 
         self.status.status = "Started practice!"
         self.status.color = DORMANT
@@ -324,10 +363,19 @@ class Duolingo:
         return self._get_text(question_container)
 
     def assist_fetch_options(self):
-        choices = self.answer_container.find_elements(By.CSS_SELECTOR, '[data-test="challenge-choice"]')
+        choices = self.challenge_container.find_elements(By.CSS_SELECTOR, '[data-test="challenge-choice"]')
         return choices, [
             self._get_text(
                 self._get_child(self._get_child(choice, 1), 0)
+            )
+            for choice in choices
+        ]
+
+    def select_fetch_options(self):
+        choices = self.challenge_container.find_elements(By.CSS_SELECTOR, '[data-test="challenge-choice"]')
+        return choices, [
+            self._get_text(
+                self._get_child(choice, 1)
             )
             for choice in choices
         ]
@@ -364,6 +412,9 @@ class Duolingo:
             info["_options"], info["options"] = self.assist_fetch_options()
         elif info["type"] == "challenge-translate":
             info["_parts"], info["parts"] = self.translate_fetch_parts()
+        elif info["type"] == "challenge-select":
+            info["_options"], info["options"] = self.select_fetch_options()
+            info["type"] = "challenge-assist"
 
         self.status.status = "Got challenge info!"
         return info
@@ -384,7 +435,7 @@ class Duolingo:
                         time.sleep(1)
                         return QuestionAnswer(question=info["question"], answer=info["options"][i])
         elif info["type"] == "challenge-translate":
-            self.status.wait_to_be_clicked(self.focus)
+            self.status.wait_to_be_clicked()
 
             answer_parts = self._get_child(self._get_child(self._get_child(self._get_child(
                 self._get_child(self._get_child(self.answer_container, 0), 0),
@@ -440,6 +491,22 @@ class Duolingo:
         return True
 
     def solve_challenge(self, info):
+        if self._get_hearts_from_page() is not None:
+            self.status.status = "LESSON MODE"
+
+            if info["type"] == "challenge-listenTap":
+                self.press_skip()
+            elif info["type"] == "challenge-translate":
+                for part in info["_parts"]:
+                    part.click()
+            elif info["type"] == "challenge-assist":
+                random.choice(info["_options"]).click()
+            else:
+                return False
+
+            return True
+
+
         with Session() as session:
             if info["type"] in ["challenge-assist", "challenge-translate"]:
                 answers = session.query(QuestionAnswer).filter(QuestionAnswer.question == info["question"]).all()
@@ -477,11 +544,15 @@ if __name__ == "__main__":
             try:
                 temp_info = duolingo.get_challenge_info()
             except:
+                print_exc()
                 break
             print(temp_info)
 
-            if not duolingo.solve_challenge(temp_info):
-                print(f"Can't solve challenge type: {temp_info['type']}")
-                input(":")
-            duolingo.press_next()
-            time.sleep(2)
+            try:
+                if not duolingo.solve_challenge(temp_info):
+                    print(f"Can't solve challenge type: {temp_info['type']}")
+                    input(":")
+                duolingo.press_next()
+                time.sleep(2)
+            except ElementClickInterceptedException:
+                pass
