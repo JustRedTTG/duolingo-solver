@@ -6,7 +6,7 @@ import time
 import tkinter as tk
 import pyautogui
 from selenium import webdriver
-from selenium.common import NoSuchElementException, TimeoutException
+from selenium.common import NoSuchElementException, TimeoutException, StaleElementReferenceException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -177,7 +177,7 @@ class Duolingo:
             return None
         try:
             return challenge_header.find_element(By.XPATH, '../../..')
-        except NoSuchElementException:
+        except (NoSuchElementException, StaleElementReferenceException):
             return None
 
     @property
