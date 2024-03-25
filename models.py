@@ -17,7 +17,7 @@ engine = create_engine(os.environ.get('DATABASE_CONNECTION_STRING'), echo=True)
 class QuestionAnswer(Base):
     __tablename__ = 'question_answers'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     question = Column(String)
     answer = Column(String)
 

@@ -152,11 +152,19 @@ class Duolingo:
 
         self.status.status = "Opened Duolingo"
 
+    @property
+    def title(self):
+        try:
+            return self.driver.title
+        except:
+            return ""
+
     def refresh(self):
         self.status.status = "Refreshing..."
         self.driver.refresh()
 
-        assert "Duolingo" in self.driver.title
+        while "Duolingo" not in self.title:
+            pass
 
         self.driver.fullscreen_window()
 
@@ -166,7 +174,7 @@ class Duolingo:
         self.status.status = f"Redirecting..."
         self.driver.get(url)
 
-        while "Duolingo" not in self.driver.title:
+        while "Duolingo" not in self.title:
             pass
 
         try:
@@ -344,12 +352,14 @@ class Duolingo:
                 time.sleep(.1)
                 self.status.color = DORMANT
                 self.redirect("https://www.duolingo.com/lesson/unit/1/level/1")
-
-            if attempt > 4 or self.heart_count >= 5 or not self._start_practice():
-                for i in range(60):
-                    self.status.status = f"Confirming practice... [{attempt}] ({i*.1:.1f}/6)"
-                    self.status.color = WAITING
-                    time.sleep(.1)
+            try:
+                if attempt > 4 or self.heart_count >= 5 or not self._start_practice():
+                    for i in range(60):
+                        self.status.status = f"Confirming practice... [{attempt}] ({i*.1:.1f}/6)"
+                        self.status.color = WAITING
+                        time.sleep(.1)
+            except:
+                attempt = 0
 
 
         self.status.status = "Started practice!"
