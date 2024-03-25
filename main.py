@@ -127,7 +127,7 @@ class Duolingo:
         self.status = Status(self.additional_status_proccessing)
 
         self.status.status = "PREVIEW"
-        self.status.wait_to_be_clicked()
+        time.sleep(3)
 
         self.status.status = "Launching Browser..."
 
@@ -186,7 +186,6 @@ class Duolingo:
         except:
             pass
 
-
     def accept_cookies(self):
         try:
             self.status.status = "Accepting cookies..."
@@ -212,7 +211,7 @@ class Duolingo:
     def _get_hearts_from_page(self):
         try:
             return int(self.driver.find_element(by=By.CSS_SELECTOR, value='[src*="hearts"]')
-                .find_element(by=By.XPATH, value='./following-sibling::span').text)
+                       .find_element(by=By.XPATH, value='./following-sibling::span').text)
         except:
             return None
 
@@ -359,12 +358,11 @@ class Duolingo:
             try:
                 if attempt > 4 or self.heart_count >= 5 or not self._start_practice():
                     for i in range(60):
-                        self.status.status = f"Confirming practice... [{attempt}] ({i*.1:.1f}/6)"
+                        self.status.status = f"Confirming practice... [{attempt}] ({i * .1:.1f}/6)"
                         self.status.color = WAITING
                         time.sleep(.1)
             except:
                 attempt = 0
-
 
         self.status.status = "Started practice!"
         self.status.color = DORMANT
@@ -520,8 +518,18 @@ class Duolingo:
             else:
                 return False
 
-            return True
+            try:
+                self.driver.find_element(By.XPATH,
+                                         '//span[text()="No thanks"]/..').click()
+            except:
+                pass
+            try:
+                self.driver.find_element(By.CSS_SELECTOR,
+                                         '[data-test="notification-drawer-no-thanks-button"]').click()
+            except:
+                pass
 
+            return True
 
         with Session() as session:
             if info["type"] in ["challenge-assist", "challenge-translate"]:
