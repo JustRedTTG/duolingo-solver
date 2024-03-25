@@ -328,6 +328,8 @@ class Duolingo:
                 self.press_next()
             except:
                 pass
+            if self.heart_count < 1:
+                self.attempt_exit_no_heart()
             self.status.status = "Double checking practice..."
             time.sleep(3)
             if self.in_practice:
@@ -372,9 +374,9 @@ class Duolingo:
         self.status.color = DORMANT
 
     def _get_text(self, element):
-        texts = element.find_elements(By.TAG_NAME, 'span')
+        texts = element.find_elements(By.XPATH, ".//*[@lang]")
         return ''.join([text.text for text in texts if
-                        text.get_attribute('lang') in ('en', 'ja') and not text.find_elements(By.TAG_NAME, 'ruby')])
+                        text.get_attribute('lang') in ('en', 'ja') and not text.find_elements(By.TAG_NAME, 'ruby') and not text.find_elements(By.XPATH, ".//*[@lang]")])
 
     def fetch_question(self):
         question_container = self.question_container
@@ -508,7 +510,24 @@ class Duolingo:
                     return 0
         return True
 
+    def attempt_exit_no_heart(self):
+        try:
+            self.driver.find_element(By.XPATH,
+                                     '//span[text()="No thanks"]/..').click()
+        except:
+            pass
+        try:
+            self.driver.find_element(By.CSS_SELECTOR,
+                                     '[data-test="notification-drawer-no-thanks-button"]').click()
+        except:
+            pass
+
     def solve_challenge(self, info):
+        if not info.get('question', 1):
+            self.status.status = "ERROR, couldn't get question!"
+            self.set_challenge_color(NEED_ANSWER_COLOR)
+            return False
+
         if self._get_hearts_from_page() is not None:
             self.status.status = "LESSON MODE"
 
@@ -521,18 +540,7 @@ class Duolingo:
                 random.choice(info["_options"]).click()
             else:
                 return False
-
-            try:
-                self.driver.find_element(By.XPATH,
-                                         '//span[text()="No thanks"]/..').click()
-            except:
-                pass
-            try:
-                self.driver.find_element(By.CSS_SELECTOR,
-                                         '[data-test="notification-drawer-no-thanks-button"]').click()
-            except:
-                pass
-
+            self.attempt_exit_no_heart()
             return True
 
         with Session() as session:
@@ -577,8 +585,7 @@ if __name__ == "__main__":
 
             try:
                 if not duolingo.solve_challenge(temp_info):
-                    print(f"Can't solve challenge type: {temp_info['type']}")
-                    input(":")
+                    duolingo.status.wait_to_be_clicked()
                 duolingo.press_next()
                 time.sleep(2)
             except ElementClickInterceptedException:
