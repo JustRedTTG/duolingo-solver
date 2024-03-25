@@ -11,6 +11,7 @@ from selenium import webdriver
 from selenium.common import NoSuchElementException, TimeoutException, StaleElementReferenceException, \
     ElementClickInterceptedException
 from selenium.webdriver import ActionChains
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -131,7 +132,10 @@ class Duolingo:
 
         self.status.status = "Launching Browser..."
 
-        self.driver = webdriver.Chrome()
+        options = Options()
+        options.add_argument("--mute-audio")
+
+        self.driver = webdriver.Chrome(options=options)
 
         atexit.register(self.driver.close)
 
