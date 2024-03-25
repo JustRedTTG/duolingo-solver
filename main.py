@@ -57,6 +57,7 @@ class Status:
         self._status_window.title("-")
         self._status_window.geometry(f"{self._WIDTH}x{self._HEIGHT}")
         self._status_window.attributes("-topmost", True)
+        self._status_window.attributes('-alpha', 0.3)
         self._status_window.overrideredirect(True)
 
         screen_width = self._root.winfo_screenwidth()
@@ -124,6 +125,9 @@ class Duolingo:
     def __init__(self):
         self._hearts = -1
         self.status = Status(self.additional_status_proccessing)
+
+        self.status.status = "PREVIEW"
+        self.status.wait_to_be_clicked()
 
         self.status.status = "Launching Browser..."
 
