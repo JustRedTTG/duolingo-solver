@@ -11,7 +11,7 @@ load_dotenv()
 
 Base = declarative_base()
 
-engine = create_engine(os.environ.get('DATABASE_CONNECTION_STRING'), echo=True)
+engine = create_engine(os.environ.get('DATABASE_CONNECTION_STRING'), echo=True, pool_pre_ping=True)
 
 
 class QuestionAnswer(Base):
