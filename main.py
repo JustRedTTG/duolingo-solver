@@ -490,10 +490,10 @@ class Duolingo:
         answer = self.get_answer(info)
         if answer is None:
             return False
+        self.status.status = f"Answer saved: {answer.answer}"
         with Session.begin() as session:
             session.add(answer)
             session.commit()
-        self.status.status = f"Answer saved: {answer.answer}"
         time.sleep(1)
         return True
 
@@ -553,6 +553,7 @@ class Duolingo:
             if info["type"] in ["challenge-assist", "challenge-translate"]:
                 answers = session.query(QuestionAnswer).filter(QuestionAnswer.question == info["question"]).all()
                 if len(answers) < 1:
+                    session.close()
                     return self._need_new_answer(info)
             elif info["type"] == "challenge-listenTap":
                 self.press_skip()
