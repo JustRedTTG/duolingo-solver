@@ -7,6 +7,7 @@ import time
 import tkinter as tk
 
 import pyautogui
+import requests
 from selenium import webdriver
 from selenium.common import NoSuchElementException, TimeoutException, StaleElementReferenceException, \
     ElementClickInterceptedException
@@ -376,7 +377,9 @@ class Duolingo:
     def _get_text(self, element):
         texts = element.find_elements(By.XPATH, ".//*[@lang]")
         return ''.join([text.text for text in texts if
-                        text.get_attribute('lang') in ('en', 'ja') and not text.find_elements(By.TAG_NAME, 'ruby') and not text.find_elements(By.XPATH, ".//*[@lang]")])
+                        text.get_attribute('lang') in ('en', 'ja') and not text.find_elements(By.TAG_NAME,
+                                                                                              'ruby') and not text.find_elements(
+                            By.XPATH, ".//*[@lang]")])
 
     def fetch_question(self):
         question_container = self.question_container
@@ -481,12 +484,15 @@ class Duolingo:
         skip_button.click()
         self.status.status = "Skipped!"
 
-    def _need_new_answer(self, session, info):
+    def _need_new_answer(self, info):
+        if (webhook := os.environ.get('WEBHOOK_NEED_ANSWER')) is not None:
+            requests.get(webhook)
         answer = self.get_answer(info)
         if answer is None:
             return False
-        session.add(answer)
-        session.commit()
+        with Session.begin() as session:
+            session.add(answer)
+            session.commit()
         self.status.status = f"Answer saved: {answer.answer}"
         time.sleep(1)
         return True
@@ -547,7 +553,7 @@ class Duolingo:
             if info["type"] in ["challenge-assist", "challenge-translate"]:
                 answers = session.query(QuestionAnswer).filter(QuestionAnswer.question == info["question"]).all()
                 if len(answers) < 1:
-                    return self._need_new_answer(session, info)
+                    return self._need_new_answer(info)
             elif info["type"] == "challenge-listenTap":
                 self.press_skip()
                 return True
@@ -561,7 +567,7 @@ class Duolingo:
                 if type(result) == bool:
                     return result
 
-            return self._need_new_answer(session, info)
+            return self._need_new_answer(info)
 
 
 if __name__ == "__main__":
