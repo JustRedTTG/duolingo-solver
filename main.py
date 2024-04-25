@@ -336,9 +336,20 @@ class Duolingo:
             if self.in_practice:
                 return True
             self.status.status = "Navigating to learn page..."
+            if self.check_super():
+                self.redirect("https://www.duolingo.com/practice-hub")
+                return False
             self.redirect("https://www.duolingo.com/learn")
 
+
         self.status.status = "Starting practice..."
+        if self.check_super():
+            if "https://www.duolingo.com/practice-hub" in self.driver.current_url:
+                super_practice = self.driver.find_element(By.CSS_SELECTOR, '[data-test="practice-hub-feature-session-cta"]')
+                super_practice.click()
+            else:
+                self.redirect("https://www.duolingo.com/practice-hub/unit-rewind")
+            return False
         practice_menu = self.driver.find_element(By.CSS_SELECTOR, '[data-test="hearts-menu"]')
         hover_action = ActionChains(self.driver).move_to_element(practice_menu)
         hover_action.perform()
@@ -430,6 +441,8 @@ class Duolingo:
 
         if info["type"] in ["challenge-assist", "challenge-translate"]:
             info["question"] = self.fetch_question()
+        else:
+            info["question"] = info['header']
 
         if info["type"] == "challenge-assist":
             info["_options"], info["options"] = self.assist_fetch_options()
@@ -483,6 +496,17 @@ class Duolingo:
         skip_button = self.driver.find_element(By.CSS_SELECTOR, '[data-test="player-skip"]')
         skip_button.click()
         self.status.status = "Skipped!"
+
+
+    def check_super(self):
+        self.status.status = "Checking super..."
+        try:
+            super_button = self.driver.find_element(By.CSS_SELECTOR, '[data-test="super-menu"]')
+        except:
+            self.status.status = "No super"
+            return False
+        self.status.status = "Super found!"
+        return super_button
 
     def _need_new_answer(self, info):
         if (webhook := os.environ.get('WEBHOOK_NEED_ANSWER')) is not None:
