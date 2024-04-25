@@ -320,9 +320,6 @@ class Duolingo:
         except NoSuchElementException:
             self.status.status = "Couldn't accept consent"
 
-        with open(COOKIES_PATH, 'wb') as file:
-            pickle.dump(self.driver.get_cookies(), file)
-
     def _start_practice(self):
         if "https://www.duolingo.com/learn" not in self.driver.current_url:
             try:
@@ -608,6 +605,9 @@ if __name__ == "__main__":
     duolingo.accept_consent()
 
     while duolingo.logged_in:
+        with open(COOKIES_PATH, 'wb') as file:
+            pickle.dump(duolingo.driver.get_cookies(), file)
+
         duolingo.start_practice()
 
         while duolingo.in_practice:
