@@ -345,6 +345,9 @@ class Duolingo:
         self.status.status = "Starting practice..."
         if self.check_super():
             if "https://www.duolingo.com/practice-hub" in self.driver.current_url:
+                self.status.status = "Starting super practice one moment..."
+                self.status.color = WAITING
+                time.sleep(1)
                 super_practice = self.driver.find_element(By.CSS_SELECTOR, '[data-test="practice-hub-feature-session-cta"]')
                 super_practice.click()
             else:
