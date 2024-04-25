@@ -321,7 +321,8 @@ class Duolingo:
             self.status.status = "Couldn't accept consent"
 
     def _start_practice(self):
-        if "https://www.duolingo.com/learn" not in self.driver.current_url:
+        if ("https://www.duolingo.com/learn" not in self.driver.current_url and
+                ('https://www.duolingo.com/practice-hub' not in self.driver.current_url or 'practice-hub/' in self.driver.current_url)):
             try:
                 self.press_next()
             except:
@@ -348,7 +349,7 @@ class Duolingo:
                 super_practice = self.driver.find_element(By.CSS_SELECTOR, '[data-test="practice-hub-feature-session-cta"]')
                 super_practice.click()
             else:
-                self.redirect("https://www.duolingo.com/practice-hub/unit-rewind")
+                self.redirect("https://www.duolingo.com/practice-hub/target-practice")
             return False
         practice_menu = self.driver.find_element(By.CSS_SELECTOR, '[data-test="hearts-menu"]')
         hover_action = ActionChains(self.driver).move_to_element(practice_menu)
