@@ -339,6 +339,8 @@ class Duolingo:
                 return False
             self.redirect("https://www.duolingo.com/learn")
 
+        self.remove_clips()
+
 
         self.status.status = "Starting practice..."
         if self.check_super():
@@ -485,18 +487,35 @@ class Duolingo:
     def press_next(self):
         self.status.status = "Continuing..."
         self.status.color = WAITING
-        next_button = self.driver.find_element(By.CSS_SELECTOR, '[data-test="player-next"]')
-        next_button.click()
-        time.sleep(1)
-        next_button.click()
-        self.status.status = "OK!"
+        try:
+            next_button = self.driver.find_element(By.CSS_SELECTOR, '[data-test="player-next"]')
+            next_button.click()
+            time.sleep(1)
+            next_button.click()
+        except:
+            pass
+        self.status.status = "Dormant"
         self.status.color = DORMANT
 
     def press_skip(self):
         self.status.status = "Skipping..."
-        skip_button = self.driver.find_element(By.CSS_SELECTOR, '[data-test="player-skip"]')
-        skip_button.click()
+        try:
+            skip_button = self.driver.find_element(By.CSS_SELECTOR, '[data-test="player-skip"]')
+            skip_button.click()
+        except:
+            pass
         self.status.status = "Skipped!"
+
+    def remove_clips(self):
+        try:
+            self.status.status = "Removing overlays..."
+            layer = self.driver.find_element(By.CSS_SELECTOR, '[clip-path="url(#clip-web-ui1)"]')
+            self.driver.execute_script("""
+            var element = arguments[0];
+            element.parentNode.removeChild(element);
+            """, layer)
+        except:
+            pass
 
 
     def check_super(self):
